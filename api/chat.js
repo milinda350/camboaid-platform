@@ -23,6 +23,8 @@ export default async function handler(req, res) {
     });
 
     const data = await response.json();
+    console.log("Groq status:", response.status);
+    console.log("Groq response:", JSON.stringify(data));
 
     if (!response.ok) {
       return res.status(response.status).json({ error: data });
@@ -31,6 +33,7 @@ export default async function handler(req, res) {
     const text = data.choices?.[0]?.message?.content ?? "No response received.";
     return res.status(200).json({ text });
   } catch (err) {
+    console.log("Catch error:", err.message);
     return res.status(500).json({ error: err.message });
   }
 }

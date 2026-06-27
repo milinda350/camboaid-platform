@@ -99,14 +99,15 @@ const RED = "#C8102E";
 
 // ── API ────────────────────────────────────────────────────────────────────────
 
-async function callClaude(messages, system) {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+async function callAI(messages, system) {
+  const res = await fetch("/api/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000, system, messages }),
+    body: JSON.stringify({ messages, system }),
   });
   const data = await res.json();
-  return data.content?.[0]?.text ?? "No response received.";
+  if (!res.ok) throw new Error(data.error || "API error");
+  return data.text ?? "No response received.";
 }
 
 // ── Chat Tab ───────────────────────────────────────────────────────────────────
@@ -135,7 +136,7 @@ function ChatTab() {
     setBusy(true);
     try {
       const apiMsgs = updated.slice(1).map(m => ({ role: m.role, content: m.content }));
-      const reply = await callClaude(apiMsgs, NGO_SYSTEM);
+      const reply = await callAI(apiMsgs, NGO_SYSTEM);
       setMsgs(prev => [...prev, { role: "assistant", content: reply }]);
     } catch {
       setMsgs(prev => [...prev, { role: "assistant", content: "Connection error. Please try again." }]);
@@ -203,7 +204,7 @@ function MeetingTab() {
     setBusy(true);
     setSummary(null);
     try {
-      const reply = await callClaude([{
+      const reply = await callAI([{
         role: "user",
         content: `Summarize this CamboAid Foundation NGO meeting transcript. Structure it into:\n\n**Key Decisions**\n**Action Items** (person + deadline)\n**Program Updates** (per program mentioned)\n**Risks & Concerns**\n**Next Steps**\n\nTranscript:\n${text}`
       }], "You are a professional meeting analyst for CamboAid Foundation, a Cambodia-based NGO. Be concise and structured.");
@@ -248,7 +249,7 @@ function ForecastTab() {
     setBusy(true);
     setInsight(null);
     try {
-      const reply = await callClaude([{
+      const reply = await callAI([{
         role: "user",
         content: `Based on CamboAid Foundation data, give 3 strategic recommendations for 2027–2028 planning. Be specific, actionable, and reference Cambodia's development context.
 
@@ -339,7 +340,7 @@ function SentimentTab() {
       const feedbackText = FEEDBACK_DATA.map((f, i) =>
         `${i + 1}. [${f.program} | ${f.province}] Rating: ${f.rating}/5 — "${f.text}"`
       ).join("\n");
-      const reply = await callClaude([{
+      const reply = await callAI([{
         role: "user",
         content: `Analyze community feedback from CamboAid Foundation beneficiaries in Cambodia. Return ONLY valid JSON, no markdown:\n{\n  "overall": "Positive|Mixed|Negative",\n  "score": <0-100>,\n  "summary": "<2 sentences>",\n  "themes": [{"label": "<theme>", "sentiment": "positive|neutral|negative", "detail": "<1 sentence>"}],\n  "recommendations": ["<action 1>", "<action 2>", "<action 3>"]\n}\n\nFeedback:\n${feedbackText}`
       }], "You are a beneficiary feedback analyst for Cambodia NGOs. Respond only with valid JSON, nothing else.");
